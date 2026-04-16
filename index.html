@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Untold Question | For My Baby</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --spotify-green: #1DB954;
+            --bg-black: #000000;
+            --bg-soft: #121212;
+            --text-main: #ffffff;
+            --text-muted: #a7a7a7;
+        }
+
+        body, html {
+            margin: 0; padding: 0;
+            font-family: 'Circular', 'Segoe UI', sans-serif;
+            background-color: var(--bg-black);
+            color: var(--text-main);
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* Initial Unlock Overlay (Fixes Autoplay issues) */
+        #unlock-overlay {
+            position: fixed; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.9); z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            cursor: pointer; text-align: center;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            grid-template-rows: 1fr 90px;
+            height: 100vh;
+        }
+
+        /* --- Sidebar --- */
+        .sidebar {
+            background-color: var(--bg-black);
+            padding: 24px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .nav-link {
+            display: flex; align-items: center; gap: 15px;
+            color: var(--text-muted); text-decoration: none;
+            font-weight: bold; padding: 12px;
+            border-radius: 8px; cursor: pointer; transition: 0.3s;
+        }
+
+        .nav-link:hover, .nav-link.active {
+            color: white; background: #282828;
+        }
+
+        /* --- Main Content --- */
+        .content-area {
+            background: linear-gradient(to bottom, #422d1b, var(--bg-soft));
+            overflow-y: auto; margin: 8px 8px 0 0;
+            border-radius: 8px; position: relative;
+        }
+
+        .screen { display: none; padding: 20px; animation: fadeIn 0.5s; }
+        .screen.active { display: block; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .chibi-main {
+            width: 180px; height: 180px; border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            animation: pulse 3s infinite ease-in-out;
+        }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+
+        .song-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .song-table th { text-align: left; color: var(--text-muted); border-bottom: 1px solid #282828; padding: 10px; }
+        .song-item:hover { background: rgba(255,255,255,0.1); cursor: pointer; }
+        .song-item td { padding: 12px 10px; border-radius: 4px; }
+        .letter-box { background: white; color: black; font-weight: bold; padding: 4px 10px; border-radius: 4px; }
+
+        /* --- Screens Content --- */
+        .profile-container { text-align: center; padding: 50px 20px; }
+        .profile-pic { width: 180px; height: 180px; border-radius: 50%; border: 4px solid var(--spotify-green); object-fit: cover; }
+        .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 30px; }
+        .stat-card { background: #181818; padding: 15px; border-radius: 10px; }
+
+        /* --- Message View (Full Screen) --- */
+        #lyrics-view {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, #7a5a3d, #000000);
+            z-index: 3000; display: none; flex-direction: column;
+            padding: 20px; overflow-y: auto;
+        }
+        .lyrics-nav {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 15px; position: sticky; top: 0; z-index: 3001;
+            background: rgba(0,0,0,0.3); backdrop-filter: blur(10px); border-radius: 10px;
+        }
+        .back-btn {
+            background: var(--spotify-green); border: none; color: black; 
+            padding: 10px 20px; border-radius: 30px; cursor: pointer; font-weight: bold;
+        }
+        .lyrics-message {
+            max-width: 700px; margin: 40px auto; font-size: 28px; font-weight: 800; 
+            line-height: 1.6; white-space: pre-wrap;
+        }
+
+        /* --- Player Bar --- */
+        .player-bar {
+            grid-column: 1 / -1; background: black;
+            display: flex; align-items: center; justify-content: space-between; padding: 0 20px;
+        }
+        .current-track { display: flex; align-items: center; gap: 12px; width: 30%; }
+        .track-img { width: 55px; height: 55px; border-radius: 4px; }
+        .player-controls { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 40%; }
+        .control-btns { display: flex; align-items: center; gap: 20px; font-size: 24px; }
+        .progress-container { width: 100%; height: 4px; background: #4d4d4d; border-radius: 2px; cursor: pointer; }
+        .progress-bar { height: 100%; background: white; width: 0%; transition: width 0.1s linear; }
+
+        @media (max-width: 768px) {
+            .container { grid-template-columns: 1fr; grid-template-rows: 1fr 100px 70px; }
+            .sidebar { grid-row: 3; flex-direction: row; justify-content: space-around; padding: 5px; }
+            .sidebar span, .current-track { display: none; }
+            .player-controls { width: 100%; }
+            .stat-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="unlock-overlay" onclick="unlockAudio()">
+    <i class="fas fa-heart" style="font-size: 50px; color: var(--spotify-green); margin-bottom: 20px;"></i>
+    <h2>For my baby</h2>
+    <p>Click anywhere to begin the experience</p>
+</div>
+
+<div class="container">
+    <aside class="sidebar">
+        <div class="nav-link active" id="btn-home" onclick="showScreen('home')"><i class="fas fa-home"></i> <span>Home</span></div>
+        <div class="nav-link" id="btn-memories" onclick="showScreen('memories')"><i class="fas fa-images"></i> <span>Memories</span></div>
+        <div class="nav-link" id="btn-profile" onclick="showScreen('profile')"><i class="fas fa-user-circle"></i> <span>Profile</span></div>
+        <div class="nav-link" id="btn-about" onclick="showScreen('about')"><i class="fas fa-info-circle"></i> <span>About</span></div>
+    </aside>
+
+    <main class="content-area">
+        <section id="home" class="screen active">
+            <div class="header-banner">
+                <img src="https://i.pinimg.com/originals/90/31/54/9031542f74136209f6e162095f4705b6.png" class="chibi-main">
+                <div class="header-text">
+                    <h1 style="margin:0; font-size: clamp(30px, 6vw, 60px);">THE UNTOLD QUESTION</h1>
+                    <p style="color:var(--text-muted)">4 Songs • Every title is a clue.</p>
+                </div>
+            </div>
+            <table class="song-table">
+                <thead><tr><th>#</th><th>Title</th><th>Artist</th><th><i class="far fa-heart"></i></th></tr></thead>
+                <tbody id="song-rows"></tbody>
+            </table>
+        </section>
+
+        <section id="memories" class="screen">
+            <h1>Our Little World</h1>
+            <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; margin-top: 20px;">
+                <div class="stat-card"><img src="https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=300" style="width:100%; border-radius:5px;"><p>That one day...</p></div>
+                <div class="stat-card"><img src="https://images.unsplash.com/photo-1516589174184-c6848463ea7d?w=300" style="width:100%; border-radius:5px;"><p>Sweetest memories.</p></div>
+            </div>
+        </section>
+
+        <section id="profile" class="screen">
+            <div class="profile-container">
+                <img src="joy3.png" class="profile-pic">
+                <h1>Baby's Profile</h1>
+                <h4>My Favorite Artist</h4>
+                <div class="stat-grid">
+                    <div class="stat-card"><h3>Infinite</h3><p>Masarap</p></div>
+                    <div class="stat-card"><h3>100%</h3><p>Beauty</p></div>
+                    <div class="stat-card"><h3>1</h3><p>Nahahanap-hanapin</p></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="about" class="screen">
+            <h1>About Purpose of this site</h1>
+            <p style="font-size: 20px; line-height: 1.6; color: #ccc;">
+                Because you love music, I created this kind of platform where I can express my feelings for you. I hope you find the question I put into every word of the title, and I hope it makes you happy when you discover it. If music is a way to make you laugh, I’m willing to sing for you, even if my voice isn’t good, just to make you smile.
+            </p>
+        </section>
+    </main>
+
+    <footer class="player-bar">
+        <div class="current-track">
+            <img src="https://i.pinimg.com/originals/90/31/54/9031542f74136209f6e162095f4705b6.png" class="track-img">
+            <div>
+                <div id="footer-title" style="font-weight:bold; font-size:14px;">Pick a song</div>
+                <div id="footer-artist" style="color:var(--text-muted); font-size:12px;">Waiting...</div>
+            </div>
+        </div>
+        <div class="player-controls">
+            <div class="control-btns">
+                <i class="fas fa-step-backward" onclick="prevSong()" style="cursor:pointer"></i>
+                <i class="fas fa-play-circle" id="masterPlay" onclick="togglePlay()" style="font-size:40px; cursor:pointer;"></i>
+                <i class="fas fa-step-forward" onclick="nextSong()" style="cursor:pointer"></i>
+            </div>
+            <div class="progress-container" onclick="seek(event)"><div class="progress-bar" id="progress"></div></div>
+        </div>
+        <div style="width:30%;"></div>
+    </footer>
+</div>
+
+<div id="lyrics-view">
+    <div class="lyrics-nav">
+        <button class="back-btn" onclick="closeLyrics()"><i class="fas fa-arrow-left"></i> Back</button>
+        <div style="text-align:right">
+            <h4 id="lyric-title" style="margin:0"></h4>
+            <p id="lyric-artist" style="margin:0; font-size:12px; color:var(--spotify-green)"></p>
+        </div>
+    </div>
+    <div class="lyrics-message" id="active-message"></div>
+</div>
+
+<audio id="audio-player"></audio>
+
+<script>
+    const songs = [
+        { title: "Are You Ready For It?... sana nga", artist: "Taylor Swift", letter: "B", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3", message: "I remember the very first time I saw you.\n\nEverything else in the room just kind of blurred out. I was nervous, my heart was racing, and I kept thinking to myself: 'Is this real?' \n\nSo, my question to you is... are you ready for a lifetime of me being completely and utterly crazy about you?" },
+        { title: "Pwede Bang?... pakiss ako?", artist: "Hev Abi", letter: "A", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3", message: "I listen to this song when I'm just sitting alone thinking of you.\n\nThere are so many things I want to say, but minsan nauunahan ako ng hiya. But 'Pwede Bang?' says everything I can't. \n\nPwede bang sa akin ka na lang habambuhay?" },
+        { title: "Kitang Kita... na gusto kita diba", artist: "Baby Dolls", letter: "B", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3", message: "You try to be humble, but baby, it's 'Kitang Kita'.\n\nIt's visible in the way your eyes sparkle when you're happy. It's visible in the way you treat people with so much kindness even when you're tired. I see you, the real you, and I love every bit of it." },
+        { title: "Pusong Ligaw.., pero ikaw yung hinahanap", artist: "Jericho Rosales", letter: "Y", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3", message: "My heart used to be 'ligaw'.\n\nI was just wandering around, not really knowing what I was looking for. And then I found you. You became my home. I don't ever want to be 'found' by anyone else but you." }
+    ];
+
+    let currentIdx = -1;
+    const audio = document.getElementById('audio-player');
+    const masterPlay = document.getElementById('masterPlay');
+    const progressBar = document.getElementById('progress');
+
+    // Populate List
+    const songRows = document.getElementById('song-rows');
+    songs.forEach((s, i) => {
+        songRows.innerHTML += `
+            <tr class="song-item" onclick="playSong(${i})">
+                <td style="color:var(--text-muted)">${i+1}</td>
+                <td><span class="letter-box">${s.letter}</span> &nbsp; ${s.title}</td>
+                <td style="color:var(--text-muted)">${s.artist}</td>
+                <td><i class="far fa-heart"></i></td>
+            </tr>`;
+    });
+
+    function unlockAudio() {
+        audio.play().then(() => { audio.pause(); }).catch(() => {});
+        document.getElementById('unlock-overlay').style.display = 'none';
+    }
+
+    function showScreen(id) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        document.getElementById('btn-' + id).classList.add('active');
+    }
+
+    function playSong(i) {
+        currentIdx = i;
+        const s = songs[i];
+        audio.src = s.url;
+        audio.play().then(() => {
+            masterPlay.className = "fas fa-pause-circle";
+        }).catch(e => console.log("Playback error:", e));
+
+        document.getElementById('footer-title').innerText = s.title;
+        document.getElementById('footer-artist').innerText = s.artist;
+        document.getElementById('lyric-title').innerText = s.title;
+        document.getElementById('lyric-artist').innerText = s.artist;
+        document.getElementById('active-message').innerText = s.message;
+        document.getElementById('lyrics-view').style.display = 'block';
+    }
+
+    function togglePlay() {
+        if (currentIdx === -1) { playSong(0); return; }
+        if (audio.paused) { audio.play(); masterPlay.className = "fas fa-pause-circle"; }
+        else { audio.pause(); masterPlay.className = "fas fa-play-circle"; }
+    }
+
+    function closeLyrics() { document.getElementById('lyrics-view').style.display = 'none'; }
+    function nextSong() { playSong((currentIdx + 1) % songs.length); }
+    function prevSong() { playSong((currentIdx - 1 + songs.length) % songs.length); }
+
+    audio.ontimeupdate = () => {
+        if (audio.duration) {
+            progressBar.style.width = (audio.currentTime / audio.duration) * 100 + "%";
+        }
+    };
+
+    function seek(e) {
+        const width = document.querySelector('.progress-container').clientWidth;
+        audio.currentTime = (e.offsetX / width) * audio.duration;
+    }
+
+    audio.onerror = () => alert("Could not load audio. Check your connection!");
+</script>
+</body>
+</html>
